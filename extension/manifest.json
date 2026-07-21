@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Bollino Scan Autofill",
+  "version": "1.0.0",
+  "description": "After you scan a pack barcode, autofills the AIC and Identification Number on the salute.gov.it VerificaFustella form. You still solve the CAPTCHA and click Verify yourself.",
+  "content_scripts": [
+    {
+      "matches": [
+        "*://salute.gov.it/*",
+        "*://*.salute.gov.it/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

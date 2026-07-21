@@ -1,8 +1,24 @@
-# Bollino Scan Helper
+# Bollino Scan Tools
+
+Helpers for reading the **Identification Number** off a pack's bollino/fustella
+barcode, so you don't have to type it by hand when verifying packs on the
+official site (`salute.gov.it/VerificaFustella`).
+
+Two options:
+
+- **`scanner-helper.html`** — a standalone offline page (below). Scan into it,
+  it shows/copies the ID and keeps a progress log. No install.
+- **`extension/`** — a Chrome/Edge extension that **autofills the AIC + ID
+  directly on the VerificaFustella form** after a scan. See
+  [`extension/README.md`](extension/README.md).
+
+Neither tool contacts a website's verification API, solves the CAPTCHA, or
+submits the form. You verify every pack yourself, one at a time.
+
+## scanner-helper.html
 
 A small offline helper for reading the **Identification Number** off a pack's
-bollino/fustella barcode, so you don't have to type it by hand when verifying
-packs on the official site (`salute.gov.it/VerificaFustella`).
+bollino/fustella barcode.
 
 ## What it does
 
