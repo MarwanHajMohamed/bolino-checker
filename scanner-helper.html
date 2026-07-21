@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bollino Scan Helper</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #fff; --ink: #1c2733; --muted: #5b6b7a;
+    --line: #d9e0e6; --accent: #1666b8; --ok: #1a7f43; --warn: #c47f00; --bad: #c02626;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    background: var(--bg); color: var(--ink); }
+  header { background: var(--accent); color: #fff; padding: 14px 20px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: .9; }
+  main { max-width: 860px; margin: 0 auto; padding: 20px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 18px; margin-bottom: 16px; }
+  .disclaimer { border-left: 4px solid var(--warn); background: #fff8e8; font-size: 13px; }
+  label { font-weight: 600; font-size: 13px; display: block; margin-bottom: 6px; }
+  #scan { width: 100%; font-size: 22px; padding: 12px; border: 2px solid var(--accent);
+    border-radius: 8px; letter-spacing: 1px; }
+  .result { display: flex; gap: 14px; margin-top: 16px; flex-wrap: wrap; }
+  .field { flex: 1; min-width: 200px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
+  .field small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  .field .val { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .field button { margin-top: 8px; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 6px; background: #f0f4f8; }
+  .status { margin-top: 14px; font-size: 15px; font-weight: 600; min-height: 22px; }
+  .status.ok { color: var(--ok); } .status.warn { color: var(--warn); } .status.bad { color: var(--bad); }
+  .stats { display: flex; gap: 20px; font-size: 14px; }
+  .stats b { font-size: 22px; display: block; }
+  .config { display: flex; gap: 16px; flex-wrap: wrap; align-items: end; }
+  .config div { flex: 1; min-width: 160px; }
+  .config input { width: 100%; padding: 8px; border: 1px solid var(--line); border-radius: 6px; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  tr.dup td { background: #fff3e0; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+  .toolbar button { padding: 8px 14px; border-radius: 7px; border: 1px solid var(--line);
+    background: #fff; cursor: pointer; font-size: 13px; }
+  .toolbar button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .empty { color: var(--muted); font-style: italic; padding: 12px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Bollino Scan Helper</h1>
+  <p>Scan a pack &rarr; read off the Identification Number &rarr; enter it on the official site with the CAPTCHA yourself.</p>
+</header>
+<main>
+  <div class="card disclaimer">
+    <strong>This tool does not verify authenticity and does not contact any website.</strong>
+    It only reads the Identification Number out of the barcode so you don't have to type it.
+    You must still submit each pack on the official salute.gov.it page and solve the CAPTCHA yourself.
+    Check the numbers below against the printed pack for your first ~10 scans before trusting the tool.
+  </div>
+
+  <div class="card">
+    <div class="config">
+      <div>
+        <label for="aic">AIC code (constant for this batch)</label>
+        <input id="aic" value="028489021">
+      </div>
+      <div>
+        <label for="sig">Product signature (barcode must end with this)</label>
+        <input id="sig" value="V5F9X">
+      </div>
+      <div>
+        <label for="target">Batch size</label>
+        <input id="target" type="number" value="2500">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <label for="scan">Scan here (keep this box focused and scan a pack)</label>
+    <input id="scan" autocomplete="off" autocapitalize="off" spellcheck="false"
+      placeholder="Click here, then scan…">
+    <div class="result">
+      <div class="field">
+        <small>AIC code</small>
+        <div class="val" id="outAic">—</div>
+        <button type="button" id="copyAic">Copy AIC</button>
+      </div>
+      <div class="field">
+        <small>Identification Number</small>
+        <div class="val" id="outId">—</div>
+        <button type="button" id="copyId">Copy ID</button>
+      </div>
+    </div>
+    <div class="status" id="status">Ready. Auto-copies the ID to your clipboard on each valid scan.</div>
+  </div>
+
+  <div class="card">
+    <div class="stats">
+      <div><b id="cScans">0</b> total scans</div>
+      <div><b id="cUnique">0</b> unique packs</div>
+      <div><b id="cDup">0</b> duplicates</div>
+      <div><b id="cRemain">2500</b> remaining</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <button type="button" class="primary" id="exportCsv">Export CSV</button>
+      <button type="button" id="clearLog">Clear log</button>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>Identification Number</th><th>AIC</th><th>Time</th><th>Note</th></tr></thead>
+      <tbody id="log"><tr><td colspan="5" class="empty">No scans yet.</td></tr></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+(function () {
+  const STORE = 'bollino-scan-log-v1';
+  const $ = id => document.getElementById(id);
+  const scan = $('scan');
+  let rows = load();
+
+  function load() {
+    try { return JSON.parse(localStorage.getItem(STORE)) || []; }
+    catch { return []; }
+  }
+  function save() { localStorage.setItem(STORE, JSON.stringify(rows)); }
+
+  function parse(raw) {
+    const s = raw.trim().toUpperCase().replace(/\s+/g, '');
+    const sig = $('sig').value.trim().toUpperCase();
+    if (!s) return { error: 'empty' };
+    // Identification Number = first 9 characters, must be digits.
+    const id = s.slice(0, 9);
+    if (!/^\d{9}$/.test(id)) return { raw: s, error: 'The first 9 characters are not digits — not a recognised pack code.' };
+    if (sig && !s.endsWith(sig)) return { raw: s, id, error: 'Barcode does not end in "' + sig + '" — this may be a DIFFERENT product. Do not trust the AIC. Verify manually.' };
+    return { raw: s, id };
+  }
+
+  function render() {
+    const uniq = new Set(rows.map(r => r.id));
+    const dups = rows.length - uniq.size;
+    $('cScans').textContent = rows.length;
+    $('cUnique').textContent = uniq.size;
+    $('cDup').textContent = dups;
+    const target = parseInt($('target').value, 10) || 0;
+    $('cRemain').textContent = Math.max(0, target - uniq.size);
+
+    const body = $('log');
+    if (!rows.length) { body.innerHTML = '<tr><td colspan="5" class="empty">No scans yet.</td></tr>'; return; }
+    body.innerHTML = rows.slice().reverse().map((r, i) =>
+      '<tr class="' + (r.dup ? 'dup' : '') + '"><td>' + (rows.length - i) + '</td><td>' +
+      r.id + '</td><td>' + r.aic + '</td><td>' + r.time + '</td><td>' +
+      (r.dup ? 'duplicate' : '') + '</td></tr>').join('');
+  }
+
+  function setStatus(msg, cls) { const el = $('status'); el.textContent = msg; el.className = 'status ' + (cls || ''); }
+
+  async function copy(text) { try { await navigator.clipboard.writeText(text); return true; } catch { return false; } }
+
+  function handleScan(raw) {
+    const res = parse(raw);
+    if (res.error === 'empty') return;
+    if (res.error && !res.id) { $('outId').textContent = '—'; setStatus('✕ ' + res.error, 'bad'); return; }
+
+    const aic = $('aic').value.trim();
+    $('outAic').textContent = aic || '—';
+    $('outId').textContent = res.id;
+
+    if (res.error) { // recognised ID but wrong product signature
+      setStatus('⚠ ' + res.error, 'warn');
+    } else {
+      const dup = rows.some(r => r.id === res.id);
+      rows.push({ id: res.id, aic, raw: res.raw, time: new Date().toLocaleTimeString(), dup });
+      save();
+      copy(res.id).then(ok => {
+        setStatus((dup ? '⚠ Already scanned — ' : '✓ ') + res.id +
+          (ok ? ' copied to clipboard.' : ' (clipboard blocked — copy manually).'), dup ? 'warn' : 'ok');
+      });
+      render();
+    }
+  }
+
+  scan.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); handleScan(scan.value); scan.value = ''; }
+  });
+  // Keep the scan box focused so a scanner always lands in it.
+  document.addEventListener('click', e => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') scan.focus(); });
+  scan.focus();
+
+  $('copyId').onclick = () => { const v = $('outId').textContent; if (v !== '—') copy(v); };
+  $('copyAic').onclick = () => { const v = $('outAic').textContent; if (v !== '—') copy(v); };
+  $('target').addEventListener('input', render);
+
+  $('clearLog').onclick = () => {
+    if (confirm('Clear all ' + rows.length + ' scanned entries? This cannot be undone.')) {
+      rows = []; save(); render(); setStatus('Log cleared.', '');
+    }
+  };
+
+  $('exportCsv').onclick = () => {
+    if (!rows.length) { alert('Nothing to export yet.'); return; }
+    const head = 'index,identification_number,aic,raw_scan,time,duplicate\n';
+    const body = rows.map((r, i) =>
+      [i + 1, r.id, r.aic, r.raw, r.time, r.dup ? 'yes' : 'no'].join(',')).join('\n');
+    const blob = new Blob([head + body], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bollino-scans-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
